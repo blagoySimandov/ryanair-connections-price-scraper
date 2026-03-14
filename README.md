@@ -34,6 +34,10 @@ python main.py ORK SOF --no-headless         # visible browser for debugging
 | `--layover-min` | 1                     | Minimum layover hours                          |
 | `--layover-max` | 8                     | Maximum layover hours                          |
 
+## Example output
+
+![out](https://i.ibb.co/mF0mPtTt/preview.webp)
+
 ## How it works
 
 1. Fetches all connection options from the Ryanair timetable API
