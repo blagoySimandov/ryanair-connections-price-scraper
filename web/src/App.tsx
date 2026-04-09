@@ -39,7 +39,7 @@ type ApiResponse = {
 }
 
 const DATETIME_DISPLAY_LENGTH = 16
-const FLATICON_LOGO_URL = "https://cdn-icons-png.flaticon.com/512/149/149059.png"
+const HEADER_ICON_URL = "https://cdn-icons-png.flaticon.com/512/149/149059.png"
 const DOWNLOAD_FILENAME = "cheapest_flights.json"
 
 function App() {
@@ -116,7 +116,7 @@ function App() {
       <Card>
         <CardHeader>
           <div className="flex items-center gap-3">
-            <img src={FLATICON_LOGO_URL} alt="Flaticon logo" className="h-8 w-8 rounded-sm" />
+            <img src={HEADER_ICON_URL} alt="Flaticon logo" className="h-8 w-8 rounded-sm" />
             <CardTitle>Ryanair Connections Price Scraper</CardTitle>
           </div>
         </CardHeader>
