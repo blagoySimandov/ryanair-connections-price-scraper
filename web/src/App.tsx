@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react"
+import { useMemo, useRef, useState } from "react"
 import { LoaderCircle } from "lucide-react"
 
 import { Button } from "./components/ui/button"
@@ -43,6 +43,11 @@ type StreamEvent =
   | { type: "result"; payload: ApiResponse }
   | { type: "error"; detail: string }
 
+type ProgressLog = {
+  id: number
+  message: string
+}
+
 const DATETIME_DISPLAY_LENGTH = 16
 const HEADER_ICON_URL = "https://cdn-icons-png.flaticon.com/512/149/149059.png"
 const DOWNLOAD_FILENAME = "cheapest_flights.json"
@@ -51,7 +56,8 @@ function App() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [response, setResponse] = useState<ApiResponse | null>(null)
-  const [progressLogs, setProgressLogs] = useState<string[]>([])
+  const [progressLogs, setProgressLogs] = useState<ProgressLog[]>([])
+  const progressIdRef = useRef(0)
   const [noScrape, setNoScrape] = useState(false)
   const [noHeadless, setNoHeadless] = useState(false)
 
@@ -115,7 +121,8 @@ function App() {
           if (!line.trim()) continue
           const eventData = JSON.parse(line) as StreamEvent
           if (eventData.type === "log") {
-            setProgressLogs((logs) => [...logs, eventData.message])
+            progressIdRef.current += 1
+            setProgressLogs((logs) => [...logs, { id: progressIdRef.current, message: eventData.message }])
             continue
           }
           if (eventData.type === "result") {
@@ -226,7 +233,7 @@ function App() {
           </CardHeader>
           <CardContent>
             <div className="max-h-72 overflow-auto rounded-md border bg-slate-50 p-3 text-xs text-slate-700">
-              {progressLogs.length === 0 ? "Starting scraper..." : progressLogs.map((log, index) => <div key={`${index}-${log}`}>{log}</div>)}
+              {progressLogs.length === 0 ? "Starting scraper..." : progressLogs.map((log) => <div key={log.id}>{log.message}</div>)}
             </div>
           </CardContent>
         </Card>
