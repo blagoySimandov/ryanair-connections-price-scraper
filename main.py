@@ -327,14 +327,18 @@ def serialize_results(results: list[JourneyPrice], top: int) -> list[dict[str, A
 
 
 def sanitize_output_path(path: str) -> Path:
+    filename_only = Path(path).name
+    if filename_only != path:
+        raise ValueError("Output file must not include directories")
+
+    if not re.fullmatch(r"[A-Za-z0-9._-]+", filename_only):
+        raise ValueError("Output file name contains invalid characters")
+
     root = Path.cwd().resolve()
-    candidate = (root / path).resolve()
+    candidate = (root / filename_only).resolve()
 
     if candidate.parent != root:
         raise ValueError("Output file must be in the current directory")
-
-    if not re.fullmatch(r"[A-Za-z0-9._-]+", candidate.name):
-        raise ValueError("Output file name contains invalid characters")
 
     return candidate
 
