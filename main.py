@@ -324,13 +324,23 @@ def serialize_results(results: list[JourneyPrice], top: int) -> list[dict[str, A
     return output
 
 
+
+
+def sanitize_output_filename(path: str) -> str:
+    filename = Path(path).name
+    if filename in {"", ".", ".."}:
+        raise ValueError("Output file must be a valid filename")
+    return filename
+
+
 def save_results(results: list[JourneyPrice], path: str, top: int):
     output = serialize_results(results, top)
+    safe_filename = sanitize_output_filename(path)
 
-    with open(path, "w") as f:
+    with open(safe_filename, "w") as f:
         json.dump(output, f, indent=2, ensure_ascii=False)
 
-    print(f"\nResults saved to {path}")
+    print(f"\nResults saved to {safe_filename}")
 
 
 def run_scraper(
@@ -353,6 +363,9 @@ def run_scraper(
 
     origin = origin.upper()
     destination = destination.upper()
+
+    if input_data is not None and input_file:
+        raise ValueError("Provide either input_data or input_file, not both")
 
     if input_data is not None:
         connections = input_data

@@ -223,7 +223,7 @@ function App() {
                   <ul className="mt-2 space-y-1">
                     {item.legs.map((leg) => (
                       <li key={`${item.rank}-${leg.route}-${leg.times}`}>
-                        {leg.route} | {leg.date} {leg.times} | £{leg.price?.toFixed?.(2) ?? leg.price} | <a className="underline" href={leg.url} target="_blank" rel="noreferrer">link</a>
+                        {leg.route} | {leg.date} {leg.times} | £{leg.price.toFixed(2)} | <a className="underline" href={leg.url} target="_blank" rel="noreferrer">link</a>
                       </li>
                     ))}
                   </ul>
