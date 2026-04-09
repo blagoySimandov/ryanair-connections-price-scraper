@@ -326,21 +326,27 @@ def serialize_results(results: list[JourneyPrice], top: int) -> list[dict[str, A
 
 
 
-def sanitize_output_filename(path: str) -> str:
-    filename = Path(path).name
-    if filename in {"", ".", ".."}:
-        raise ValueError("Output file must be a valid filename")
-    return filename
+def sanitize_output_path(path: str) -> Path:
+    root = Path.cwd().resolve()
+    candidate = (root / path).resolve()
+
+    if candidate.parent != root:
+        raise ValueError("Output file must be in the current directory")
+
+    if not re.fullmatch(r"[A-Za-z0-9._-]+", candidate.name):
+        raise ValueError("Output file name contains invalid characters")
+
+    return candidate
 
 
 def save_results(results: list[JourneyPrice], path: str, top: int):
     output = serialize_results(results, top)
-    safe_filename = sanitize_output_filename(path)
+    safe_path = sanitize_output_path(path)
 
-    with open(safe_filename, "w") as f:
+    with safe_path.open("w", encoding="utf-8") as f:
         json.dump(output, f, indent=2, ensure_ascii=False)
 
-    print(f"\nResults saved to {safe_filename}")
+    print(f"\nResults saved to {safe_path.name}")
 
 
 def run_scraper(

@@ -38,6 +38,8 @@ type ApiResponse = {
   results?: ResultItem[]
 }
 
+const DATETIME_DISPLAY_LENGTH = 16
+
 function App() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -198,7 +200,7 @@ function App() {
               {(response.connections ?? []).map((item) => (
                 <div key={`${item.rank}-${item.route}-${item.departure}`} className="rounded-md border p-3 text-sm">
                   <div className="font-medium">#{item.rank} {item.route}</div>
-                  <div className="text-slate-600">Departure: {item.departure.slice(0, 16)} | Duration: {item.duration}</div>
+                  <div className="text-slate-600">Departure: {item.departure.slice(0, DATETIME_DISPLAY_LENGTH)} | Duration: {item.duration}</div>
                 </div>
               ))}
             </div>
@@ -218,7 +220,7 @@ function App() {
               {(response.results ?? []).map((item) => (
                 <div key={item.rank} className="rounded-md border p-3 text-sm">
                   <div className="font-medium">
-                    #{item.rank} | £{item.total_price.toFixed(2)} | {item.duration} | {item.departure.slice(0, 16)}
+                    #{item.rank} | £{item.total_price.toFixed(2)} | {item.duration} | {item.departure.slice(0, DATETIME_DISPLAY_LENGTH)}
                   </div>
                   <ul className="mt-2 space-y-1">
                     {item.legs.map((leg) => (

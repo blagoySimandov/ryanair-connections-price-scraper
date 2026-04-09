@@ -35,6 +35,8 @@ async def run_search(
         except Exception as exc:
             raise HTTPException(status_code=400, detail=f"Invalid input JSON file: {exc}") from exc
 
+    should_save_results = not no_scrape
+
     try:
         payload = run_scraper(
             origin=origin,
@@ -48,7 +50,7 @@ async def run_search(
             no_headless=no_headless,
             layover_min=layover_min,
             layover_max=layover_max,
-            save_output=not no_scrape,
+            save_output=should_save_results,
         )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
