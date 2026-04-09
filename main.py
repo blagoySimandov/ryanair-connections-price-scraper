@@ -466,6 +466,12 @@ async def run_scraper_async(
     if not connections:
         raise ValueError("No connections found.")
 
+    if len(connections) > 100:
+        raise ValueError(
+            f"Found {len(connections)} connections — this is too many and would run forever. "
+            "Please select a smaller date range."
+        )
+
     payload: dict[str, Any] = {
         "origin": origin,
         "destination": destination,

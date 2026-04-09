@@ -52,6 +52,16 @@ const DATETIME_DISPLAY_LENGTH = 16;
 const HEADER_ICON_URL = "https://cdn-icons-png.flaticon.com/512/149/149059.png";
 const DOWNLOAD_FILENAME = "cheapest_flights.json";
 
+function todayStr() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function plusDaysStr(days: number) {
+  const d = new Date();
+  d.setDate(d.getDate() + days);
+  return d.toISOString().slice(0, 10);
+}
+
 function App() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -63,8 +73,8 @@ function App() {
   const [form, setForm] = useState({
     origin: "ORK",
     destination: "SOF",
-    dateFrom: "",
-    dateTo: "",
+    dateFrom: todayStr(),
+    dateTo: plusDaysStr(7),
     top: "5",
     layoverMin: "1",
     layoverMax: "8",
