@@ -331,6 +331,9 @@ def sanitize_output_path(path: str) -> Path:
     if filename_only != path:
         raise ValueError("Output file must not include directories")
 
+    if ".." in filename_only or filename_only.startswith("."):
+        raise ValueError("Output file name is not allowed")
+
     if not re.fullmatch(r"[A-Za-z0-9._-]+", filename_only):
         raise ValueError("Output file name contains invalid characters")
 
