@@ -353,7 +353,7 @@ def save_results(results: list[JourneyPrice], path: str, top: int):
     print(f"\nResults saved to {safe_path.name}")
 
 
-def run_scraper(
+async def run_scraper_async(
     *,
     origin: str,
     destination: str,
@@ -404,7 +404,7 @@ def run_scraper(
 
     unique_legs = get_unique_legs(connections)
     headless = not no_headless
-    price_cache = asyncio.run(scrape_all_prices(unique_legs, headless))
+    price_cache = await scrape_all_prices(unique_legs, headless)
     results = match_prices(connections, price_cache)
 
     if not results:
@@ -418,6 +418,41 @@ def run_scraper(
         save_results(results, output_file, top)
 
     return payload
+
+
+def run_scraper(
+    *,
+    origin: str,
+    destination: str,
+    date_from: str | None = None,
+    date_to: str | None = None,
+    top: int = 5,
+    no_scrape: bool = False,
+    input_file: str | None = None,
+    input_data: list[dict] | None = None,
+    output_file: str = "cheapest_flights.json",
+    no_headless: bool = False,
+    layover_min: int = 1,
+    layover_max: int = 8,
+    save_output: bool = True,
+) -> dict[str, Any]:
+    return asyncio.run(
+        run_scraper_async(
+            origin=origin,
+            destination=destination,
+            date_from=date_from,
+            date_to=date_to,
+            top=top,
+            no_scrape=no_scrape,
+            input_file=input_file,
+            input_data=input_data,
+            output_file=output_file,
+            no_headless=no_headless,
+            layover_min=layover_min,
+            layover_max=layover_max,
+            save_output=save_output,
+        )
+    )
 
 
 def main():

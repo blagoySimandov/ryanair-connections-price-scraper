@@ -5,7 +5,7 @@ from typing import Any
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.staticfiles import StaticFiles
 
-from main import run_scraper
+from main import run_scraper_async
 
 app = FastAPI(title="Ryanair Connections Price Scraper")
 
@@ -38,7 +38,7 @@ async def run_search(
     should_save_results = not no_scrape
 
     try:
-        payload = run_scraper(
+        payload = await run_scraper_async(
             origin=origin,
             destination=destination,
             date_from=date_from or None,

@@ -39,12 +39,13 @@ type ApiResponse = {
 }
 
 const DATETIME_DISPLAY_LENGTH = 16
+const FLATICON_LOGO_URL = "https://cdn-icons-png.flaticon.com/512/149/149059.png"
+const DOWNLOAD_FILENAME = "cheapest_flights.json"
 
 function App() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [response, setResponse] = useState<ApiResponse | null>(null)
-  const [inputFile, setInputFile] = useState<File | null>(null)
   const [noScrape, setNoScrape] = useState(false)
   const [noHeadless, setNoHeadless] = useState(false)
 
@@ -54,7 +55,6 @@ function App() {
     dateFrom: "",
     dateTo: "",
     top: "5",
-    outputFile: "cheapest_flights.json",
     layoverMin: "1",
     layoverMax: "8",
   })
@@ -76,14 +76,10 @@ function App() {
       body.set("date_from", form.dateFrom)
       body.set("date_to", form.dateTo)
       body.set("top", form.top)
-      body.set("output_file", form.outputFile)
       body.set("layover_min", form.layoverMin)
       body.set("layover_max", form.layoverMax)
       body.set("no_scrape", String(noScrape))
       body.set("no_headless", String(noHeadless))
-      if (inputFile) {
-        body.set("input_file", inputFile)
-      }
 
       const res = await fetch("/api/run", {
         method: "POST",
@@ -110,7 +106,7 @@ function App() {
     const url = URL.createObjectURL(blob)
     const a = document.createElement("a")
     a.href = url
-    a.download = form.outputFile || "cheapest_flights.json"
+    a.download = DOWNLOAD_FILENAME
     a.click()
     URL.revokeObjectURL(url)
   }
@@ -119,7 +115,10 @@ function App() {
     <main className="mx-auto max-w-5xl p-4 md:p-8">
       <Card>
         <CardHeader>
-          <CardTitle>Ryanair Connections Price Scraper</CardTitle>
+          <div className="flex items-center gap-3">
+            <img src={FLATICON_LOGO_URL} alt="Flaticon logo" className="h-8 w-8 rounded-sm" />
+            <CardTitle>Ryanair Connections Price Scraper</CardTitle>
+          </div>
         </CardHeader>
         <CardContent>
           <form onSubmit={onSubmit} className="grid gap-4 md:grid-cols-2">
@@ -144,20 +143,12 @@ function App() {
               <Input id="top" type="number" min="1" value={form.top} onChange={(e) => setForm((f) => ({ ...f, top: e.target.value }))} />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="outputFile">Output filename</Label>
-              <Input id="outputFile" value={form.outputFile} onChange={(e) => setForm((f) => ({ ...f, outputFile: e.target.value }))} />
-            </div>
-            <div className="space-y-2">
               <Label htmlFor="layoverMin">Layover min (hours)</Label>
               <Input id="layoverMin" type="number" min="0" value={form.layoverMin} onChange={(e) => setForm((f) => ({ ...f, layoverMin: e.target.value }))} />
             </div>
             <div className="space-y-2">
               <Label htmlFor="layoverMax">Layover max (hours)</Label>
               <Input id="layoverMax" type="number" min="1" value={form.layoverMax} onChange={(e) => setForm((f) => ({ ...f, layoverMax: e.target.value }))} />
-            </div>
-            <div className="space-y-2 md:col-span-2">
-              <Label htmlFor="inputFile">Input JSON file (optional)</Label>
-              <Input id="inputFile" type="file" accept="application/json" onChange={(e) => setInputFile(e.target.files?.[0] ?? null)} />
             </div>
             <div className="flex items-center gap-2">
               <Checkbox id="noScrape" checked={noScrape} onCheckedChange={(v) => setNoScrape(Boolean(v))} />
