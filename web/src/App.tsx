@@ -38,6 +38,11 @@ type ApiResponse = {
   results?: ResultItem[]
 }
 
+type StreamEvent =
+  | { type: "log"; message: string }
+  | { type: "result"; payload: ApiResponse }
+  | { type: "error"; detail: string }
+
 const DATETIME_DISPLAY_LENGTH = 16
 const HEADER_ICON_URL = "https://cdn-icons-png.flaticon.com/512/149/149059.png"
 const DOWNLOAD_FILENAME = "cheapest_flights.json"
@@ -46,6 +51,7 @@ function App() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [response, setResponse] = useState<ApiResponse | null>(null)
+  const [progressLogs, setProgressLogs] = useState<string[]>([])
   const [noScrape, setNoScrape] = useState(false)
   const [noHeadless, setNoHeadless] = useState(false)
 
@@ -68,6 +74,8 @@ function App() {
     event.preventDefault()
     setLoading(true)
     setError(null)
+    setProgressLogs([])
+    setResponse(null)
 
     try {
       const body = new FormData()
@@ -81,17 +89,47 @@ function App() {
       body.set("no_scrape", String(noScrape))
       body.set("no_headless", String(noHeadless))
 
-      const res = await fetch("/api/run", {
+      const res = await fetch("/api/run/stream", {
         method: "POST",
         body,
       })
-
-      const payload = await res.json()
-      if (!res.ok) {
+      if (!res.ok || !res.body) {
+        const payload = await res.json().catch(() => ({}))
         throw new Error(payload.detail ?? "Request failed")
       }
 
-      setResponse(payload)
+      const reader = res.body.getReader()
+      const decoder = new TextDecoder()
+      let buffer = ""
+      let receivedResult = false
+
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+
+        buffer += decoder.decode(value, { stream: true })
+        const lines = buffer.split("\n")
+        buffer = lines.pop() ?? ""
+
+        for (const line of lines) {
+          if (!line.trim()) continue
+          const eventData = JSON.parse(line) as StreamEvent
+          if (eventData.type === "log") {
+            setProgressLogs((logs) => [...logs, eventData.message])
+            continue
+          }
+          if (eventData.type === "result") {
+            receivedResult = true
+            setResponse(eventData.payload)
+            continue
+          }
+          throw new Error(eventData.detail || "Request failed")
+        }
+      }
+
+      if (!receivedResult) {
+        throw new Error("Streaming ended before a final result was received")
+      }
     } catch (e) {
       setResponse(null)
       setError(e instanceof Error ? e.message : "Unknown error")
@@ -177,6 +215,19 @@ function App() {
         <Card className="mt-4 border-red-200">
           <CardContent>
             <p className="text-sm text-red-700">{error}</p>
+          </CardContent>
+        </Card>
+      )}
+
+      {(loading || progressLogs.length > 0) && (
+        <Card className="mt-4">
+          <CardHeader>
+            <CardTitle>Realtime progress</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="max-h-72 overflow-auto rounded-md border bg-slate-50 p-3 text-xs text-slate-700">
+              {progressLogs.length === 0 ? "Starting scraper..." : progressLogs.map((log, index) => <div key={`${index}-${log}`}>{log}</div>)}
+            </div>
           </CardContent>
         </Card>
       )}
