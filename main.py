@@ -56,15 +56,52 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument("origin", help="Origin IATA code (e.g. ORK)")
     parser.add_argument("destination", help="Destination IATA code (e.g. SOF)")
-    parser.add_argument("--from", dest="date_from", default=None, help="Start date YYYY-MM-DD (default: today)")
-    parser.add_argument("--to", dest="date_to", default=None, help="End date YYYY-MM-DD (default: 3 weeks from start)")
-    parser.add_argument("--top", type=int, default=5, help="Number of cheapest results to show (default: 5)")
-    parser.add_argument("--no-scrape", action="store_true", help="Skip price scraping, just show available connections")
-    parser.add_argument("--input", dest="input_file", default=None, help="Load connections from a JSON file instead of fetching from API")
-    parser.add_argument("--output", dest="output_file", default="cheapest_flights.json", help="Output JSON file (default: cheapest_flights.json)")
-    parser.add_argument("--no-headless", action="store_true", help="Run browser with visible window (for debugging bot detection)")
-    parser.add_argument("--layover-min", type=int, default=1, help="Minimum layover hours (default: 1)")
-    parser.add_argument("--layover-max", type=int, default=8, help="Maximum layover hours (default: 8)")
+    parser.add_argument(
+        "--from",
+        dest="date_from",
+        default=None,
+        help="Start date YYYY-MM-DD (default: today)",
+    )
+    parser.add_argument(
+        "--to",
+        dest="date_to",
+        default=None,
+        help="End date YYYY-MM-DD (default: 3 weeks from start)",
+    )
+    parser.add_argument(
+        "--top",
+        type=int,
+        default=5,
+        help="Number of cheapest results to show (default: 5)",
+    )
+    parser.add_argument(
+        "--no-scrape",
+        action="store_true",
+        help="Skip price scraping, just show available connections",
+    )
+    parser.add_argument(
+        "--input",
+        dest="input_file",
+        default=None,
+        help="Load connections from a JSON file instead of fetching from API",
+    )
+    parser.add_argument(
+        "--output",
+        dest="output_file",
+        default="cheapest_flights.json",
+        help="Output JSON file (default: cheapest_flights.json)",
+    )
+    parser.add_argument(
+        "--no-headless",
+        action="store_true",
+        help="Run browser with visible window (for debugging bot detection)",
+    )
+    parser.add_argument(
+        "--layover-min", type=int, default=1, help="Minimum layover hours (default: 1)"
+    )
+    parser.add_argument(
+        "--layover-max", type=int, default=8, help="Maximum layover hours (default: 8)"
+    )
 
     args = parser.parse_args()
     args.date_from, args.date_to = resolve_dates(args.date_from, args.date_to)
@@ -127,27 +164,33 @@ def get_unique_legs(data: list[dict]) -> list[tuple[str, str, str]]:
         for flight in journey["flights"]:
             dt = datetime.fromisoformat(flight["departureDateTime"])
             date_str = dt.strftime("%Y-%m-%d")
-            legs.add((flight["departureAirportCode"], flight["arrivalAirportCode"], date_str))
+            legs.add(
+                (flight["departureAirportCode"], flight["arrivalAirportCode"], date_str)
+            )
     return sorted(legs)
 
 
-async def scrape_prices_for_route(page, origin: str, dest: str, date: str) -> dict[str, float]:
+async def scrape_prices_for_route(
+    page, origin: str, dest: str, date: str
+) -> dict[str, float]:
     url = build_ryanair_url(origin, dest, date)
     print(f"  Scraping {origin} -> {dest} on {date}...")
 
     time_price_map: dict[str, float] = {}
 
     try:
-        await page.goto(url, wait_until="domcontentloaded", timeout=30000)
+        await page.goto(url, wait_until="domcontentloaded", timeout=10000)
 
         try:
-            await page.wait_for_selector("flight-card-new", timeout=15000)
+            await page.wait_for_selector("flight-card-new", timeout=10000)
         except Exception:
             print("    No flight cards found")
             return time_price_map
 
         try:
-            cookie_btn = page.locator("button.cookie-popup-with-overlay__button, [data-ref='cookie.accept-all']")
+            cookie_btn = page.locator(
+                "button.cookie-popup-with-overlay__button, [data-ref='cookie.accept-all']"
+            )
             if await cookie_btn.count() > 0:
                 await cookie_btn.first.click()
                 await asyncio.sleep(1)
@@ -163,12 +206,17 @@ async def scrape_prices_for_route(page, origin: str, dest: str, date: str) -> di
         for i in range(count):
             card = cards.nth(i)
             try:
-                dep_time_el = card.locator("[data-ref='flight-segment.departure'] .flight-info__hour")
-                dep_time = (await dep_time_el.inner_text()).strip()
+                dep_time_el = card.locator(
+                    "[data-ref='flight-segment.departure'] .flight-info__hour"
+                )
+                dep_time = (await dep_time_el.inner_text(timeout=5000)).strip()
 
                 price_el = card.locator("[data-e2e='flight-card-price']")
-                price_text = (await price_el.inner_text()).strip()
+                if await price_el.count() == 0:
+                    print(f"    {dep_time} => sold out / unavailable")
+                    continue
 
+                price_text = (await price_el.inner_text(timeout=5000)).strip()
                 price_clean = re.sub(r"[^\d.]", "", price_text)
                 if price_clean:
                     price = float(price_clean)
@@ -183,7 +231,9 @@ async def scrape_prices_for_route(page, origin: str, dest: str, date: str) -> di
     return time_price_map
 
 
-async def scrape_all_prices(unique_legs: list[tuple[str, str, str]], headless: bool) -> dict[tuple[str, str, str], dict[str, float]]:
+async def scrape_all_prices(
+    unique_legs: list[tuple[str, str, str]], headless: bool
+) -> dict[tuple[str, str, str], dict[str, float]]:
     from playwright.async_api import async_playwright
 
     cache: dict[tuple[str, str, str], dict[str, float]] = {}
@@ -202,7 +252,9 @@ async def scrape_all_prices(unique_legs: list[tuple[str, str, str]], headless: b
         page = await context.new_page()
 
         for origin, dest, date in unique_legs:
-            cache[(origin, dest, date)] = await scrape_prices_for_route(page, origin, dest, date)
+            cache[(origin, dest, date)] = await scrape_prices_for_route(
+                page, origin, dest, date
+            )
             await asyncio.sleep(2)
 
         await browser.close()
@@ -210,7 +262,9 @@ async def scrape_all_prices(unique_legs: list[tuple[str, str, str]], headless: b
     return cache
 
 
-def match_prices(connections: list[dict], price_cache: dict[tuple[str, str, str], dict[str, float]]) -> list[JourneyPrice]:
+def match_prices(
+    connections: list[dict], price_cache: dict[tuple[str, str, str], dict[str, float]]
+) -> list[JourneyPrice]:
     results = []
 
     for journey in connections:
@@ -237,7 +291,17 @@ def match_prices(connections: list[dict], price_cache: dict[tuple[str, str, str]
                         price = scraped_price
                         break
 
-            legs.append(LegPrice(origin=origin, destination=dest, date=date_str, departure_time=dep_time, arrival_time=arr_time, price=price, url=url))
+            legs.append(
+                LegPrice(
+                    origin=origin,
+                    destination=dest,
+                    date=date_str,
+                    departure_time=dep_time,
+                    arrival_time=arr_time,
+                    price=price,
+                    url=url,
+                )
+            )
 
             if price is not None:
                 total += price
@@ -264,8 +328,13 @@ def print_connections(connections: list[dict]):
     print(f"{'=' * 60}\n")
 
     for i, j in enumerate(connections, 1):
-        route = " -> ".join(f["departureAirportCode"] for f in j["flights"]) + f" -> {j['flights'][-1]['arrivalAirportCode']}"
-        print(f"  {i:3d}. {route}  |  {j['departureDateTime'][:16]}  |  {j['duration']}")
+        route = (
+            " -> ".join(f["departureAirportCode"] for f in j["flights"])
+            + f" -> {j['flights'][-1]['arrivalAirportCode']}"
+        )
+        print(
+            f"  {i:3d}. {route}  |  {j['departureDateTime'][:16]}  |  {j['duration']}"
+        )
 
 
 def print_results(results: list[JourneyPrice], top: int):
@@ -280,14 +349,19 @@ def print_results(results: list[JourneyPrice], top: int):
         print(f"      Departs: {jp.departure_datetime[:16]}")
         print(f"{'─' * 55}")
         for leg in jp.legs:
-            print(f"  {leg.origin} -> {leg.destination}  |  {leg.date}  {leg.departure_time}-{leg.arrival_time}  |  £{leg.price:.2f}")
+            print(
+                f"  {leg.origin} -> {leg.destination}  |  {leg.date}  {leg.departure_time}-{leg.arrival_time}  |  £{leg.price:.2f}"
+            )
             print(f"  {leg.url}")
 
 
 def serialize_connections(connections: list[dict]) -> list[dict[str, Any]]:
     items: list[dict[str, Any]] = []
     for i, j in enumerate(connections, 1):
-        route = " -> ".join(f["departureAirportCode"] for f in j["flights"]) + f" -> {j['flights'][-1]['arrivalAirportCode']}"
+        route = (
+            " -> ".join(f["departureAirportCode"] for f in j["flights"])
+            + f" -> {j['flights'][-1]['arrivalAirportCode']}"
+        )
         items.append(
             {
                 "rank": i,
@@ -322,8 +396,6 @@ def serialize_results(results: list[JourneyPrice], top: int) -> list[dict[str, A
             }
         )
     return output
-
-
 
 
 def sanitize_output_path(path: str) -> Path:
@@ -387,7 +459,9 @@ async def run_scraper_async(
         connections = json.loads(Path(input_file).read_text())
         print(f"Loaded {len(connections)} connections\n")
     else:
-        connections = fetch_connections(origin, destination, date_from, date_to, layover_min, layover_max)
+        connections = fetch_connections(
+            origin, destination, date_from, date_to, layover_min, layover_max
+        )
 
     if not connections:
         raise ValueError("No connections found.")
@@ -411,7 +485,9 @@ async def run_scraper_async(
     results = match_prices(connections, price_cache)
 
     if not results:
-        raise ValueError("No complete price data found for any journey. Try --no-scrape to see available connections.")
+        raise ValueError(
+            "No complete price data found for any journey. Try --no-scrape to see available connections."
+        )
 
     payload["mode"] = "priced"
     payload["priced_journeys"] = len(results)
@@ -482,7 +558,16 @@ def main():
 
     if payload["mode"] == "connections":
         connections = payload["connections"]
-        print_connections([{"flights": c["flights"], "departureDateTime": c["departure"], "duration": c["duration"]} for c in connections])
+        print_connections(
+            [
+                {
+                    "flights": c["flights"],
+                    "departureDateTime": c["departure"],
+                    "duration": c["duration"],
+                }
+                for c in connections
+            ]
+        )
         return
 
     results = [
@@ -507,7 +592,9 @@ def main():
     ]
 
     print_results(results, args.top)
-    print(f"\nPriced {payload['priced_journeys']} / {payload['connections_count']} journeys")
+    print(
+        f"\nPriced {payload['priced_journeys']} / {payload['connections_count']} journeys"
+    )
 
 
 if __name__ == "__main__":
